@@ -13,13 +13,20 @@ sys.setdefaultencoding("utf-8")
 #登陆
 table_service = TableService(account_name=account_name, account_key=account_key)
 
+
+#查询所有表格
+tables = table_service.query_tables()
+for table in tables:
+    print table.name
+
+
 #创建test
 table_service.create_table('test');
 
 moment = {
      'PartitionKey' : 'demo',
-     'RowKey' : '3',
-     'message' : 'hello windows world!',
+     'RowKey' : '5',
+     'message' : 'demo for qingtian!',
      'time' : time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.localtime())
 }
 
