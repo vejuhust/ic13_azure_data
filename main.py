@@ -21,7 +21,8 @@ class HealthDataAzure:
     TABLE_TEMPERATURE = 'BodyTemperature'
     TABLE_HEARTBLOOD = 'HeartRateBloodPressure'
     TABLE_MESSAGE = 'Message'
-    ROW_USER = 'Profile'
+    USER_PROFILE = 'Profile'
+    USER_COUNT = 'DataCount'
     
     
     #初始化
@@ -36,7 +37,7 @@ class HealthDataAzure:
 
     
     #将Entity转化为dictionary
-    def entity_to_dict(self, entity):
+    def __entity_to_dict(self, entity):
         key_lists = dir(entity)
         result = {}
         pattern_attr = re.compile(u'^__.*__$')
@@ -51,7 +52,7 @@ class HealthDataAzure:
         result = []
         tables = self.table_service.query_tables()
         for table in tables:
-            result.append(self.entity_to_dict(table))
+            result.append(self.__entity_to_dict(table))
         return result
     
 
@@ -60,7 +61,7 @@ class HealthDataAzure:
         result = []
         users = self.table_service.query_entities(self.TABLE_USER)
         for user in users:
-            result.append(self.entity_to_dict(user))
+            result.append(self.__entity_to_dict(user))
         return result
 
 
@@ -68,11 +69,11 @@ class HealthDataAzure:
     #用户存在返回Entity，用户不存在返回None
     def get_user(self, username):
         try:
-            user = self.table_service.get_entity(self.TABLE_USER, username, self.ROW_USER)
+            user = self.table_service.get_entity(self.TABLE_USER, username, self.USER_PROFILE)
         except:
             return None
         else:
-            return self.entity_to_dict(user)
+            return self.__entity_to_dict(user)
 
 
     #添加用户
@@ -81,7 +82,7 @@ class HealthDataAzure:
         if (self.get_user(username) == None):
             user = {
                 'PartitionKey' : username,
-                'RowKey' : self.ROW_USER,
+                'RowKey' : self.USER_PROFILE,
                 'Username' : username,
                 'Password' : password,
                 'Date' : datetime.datetime.today()
@@ -96,32 +97,37 @@ class HealthDataAzure:
             return False
 
 
-    #删除用户
+    #删除用户及其存储标记
     #删除成功返回True，删除失败返回False
     def delete_user(self, username):
         try:
-            result = self.table_service.delete_entity(self.TABLE_USER, username, self.ROW_USER)
+            self.table_service.delete_entity(self.TABLE_USER, username, self.USER_PROFILE)
         except:
             return False
         else:
-            return True
+            try:
+                self.table_service.delete_entity(self.TABLE_USER, username, self.USER_COUNT)
+            except:
+                pass
+            finally:
+                return True
 
 
     #更新用户密码
-    #更新成功返回True，删除失败返回False
+    #更新成功返回True，更新失败返回False
     def update_user(self, username, password):
         if (self.get_user(username) == None):
             return False
         else:
             user = {
                 'PartitionKey' : username,
-                'RowKey' : self.ROW_USER,
+                'RowKey' : self.USER_PROFILE,
                 'Username' : username,
                 'Password' : password,
                 'Date' : datetime.datetime.today()
             }
             try:
-                self.table_service.update_entity(self.TABLE_USER, username, self.ROW_USER, user)
+                self.table_service.update_entity(self.TABLE_USER, username, self.USER_PROFILE, user)
             except:
                 return False
             else:
@@ -129,7 +135,8 @@ class HealthDataAzure:
 
 
 #打印JSON格式输出
-def print_json(item):
+def print_json(description, item):
+    print description, 
     try:
         print json.dumps(item, sort_keys=True, indent=4)
     except:
@@ -139,24 +146,24 @@ def print_json(item):
 
 d = HealthDataAzure()
 
-print_json( d.get_all_tables()  )
-print_json( d.get_all_users()   )
-print_json( d.add_user('user1', 'password1')    )
-print_json( d.add_user('user1', 'password1')    )
-print_json( d.add_user('user2', 'password2')    )
-print_json( d.get_user('USER1') )
-print_json( d.get_user('user2') )
-print_json( d.get_all_users()   )
-print_json( d.delete_user('user1')  )
-print_json( d.delete_user('user2')  )
-print_json( d.get_all_users()   )
-print_json( d.delete_user('hello')  )
-print_json( d.add_user('user3', 'passwordXXX')  )
-print_json( d.get_user('user3') )
-print_json( d.update_user('user3', 'PASSWORD333')   )
-print_json( d.get_user('user3') )
-print_json( d.delete_user('user3')  )
-print_json( d.update_user('user4', 'PASSWORDFour')  )
-print_json( d.get_all_users()   )
+print_json(u'获取所有表格，四枚', d.get_all_tables()  )
+print_json(u'获取所有用户，应当为空', d.get_all_users()   )
+print_json(u'添加用户user1，成功', d.add_user('user1', 'password1')    )
+print_json(u'重复添加用户user1，失败', d.add_user('user1', 'password1')    )
+print_json(u'添加用户user2，成功', d.add_user('user2', 'password2')    )
+print_json(u'获取未知用户USER1，失败', d.get_user('USER1') )
+print_json(u'获取用户user2，成功', d.get_user('user2') )
+print_json(u'获取所有用户，两枚', d.get_all_users()   )
+print_json(u'删除用户user1，成功', d.delete_user('user1')  )
+print_json(u'删除用户user2，成功', d.delete_user('user2')  )
+print_json(u'获取所有用户，应当为空', d.get_all_users()   )
+print_json(u'删除未知用户hello，失败', d.delete_user('hello')  )
+print_json(u'添加用户user3，成功', d.add_user('user3', 'passwordXXX')  )
+print_json(u'获取用户user3，成功', d.get_user('user3') )
+print_json(u'更新用户user3，成功', d.update_user('user3', 'PASSWORD333')   )
+print_json(u'获取用户user3，成功', d.get_user('user3') )
+print_json(u'删除用户user3，成功', d.delete_user('user3')  )
+print_json(u'更新未知用户user4，失败', d.update_user('user4', 'PASSWORDFour')  )
+print_json(u'获取所有用户，应当为空', d.get_all_users()   )
 
 
